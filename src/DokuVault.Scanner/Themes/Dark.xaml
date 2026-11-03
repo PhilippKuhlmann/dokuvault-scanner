@@ -1,0 +1,55 @@
+<!--
+  DokuVault dark, as the web app's .dark class: page gray-900, cards gray-800,
+  inputs gray-700, accent text cerulean-400, the lightened logo (logo-hell.png).
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Accent" Color="#1F73D6" />
+    <SolidColorBrush x:Key="AccentHover" Color="#3391F0" />
+    <SolidColorBrush x:Key="AccentText" Color="#59B0FF" />
+    <SolidColorBrush x:Key="AccentLight" Color="#17304F" />
+    <SolidColorBrush x:Key="AccentBorder" Color="#1B4D8E" />
+    <SolidColorBrush x:Key="PrimaryDisabled" Color="#1B4176" />
+    <SolidColorBrush x:Key="Heading" Color="#F3F4F6" />
+
+    <SolidColorBrush x:Key="Page" Color="#111827" />
+    <SolidColorBrush x:Key="Card" Color="#1F2937" />
+    <SolidColorBrush x:Key="Subtle" Color="#252F3E" />
+    <SolidColorBrush x:Key="Line" Color="#374151" />
+    <SolidColorBrush x:Key="LineSoft" Color="#2A3442" />
+    <SolidColorBrush x:Key="Text" Color="#F3F4F6" />
+    <SolidColorBrush x:Key="Muted" Color="#9CA3AF" />
+    <SolidColorBrush x:Key="Placeholder" Color="#6B7280" />
+
+    <SolidColorBrush x:Key="Input" Color="#374151" />
+    <SolidColorBrush x:Key="InputBorder" Color="#4B5563" />
+    <SolidColorBrush x:Key="ButtonBg" Color="#374151" />
+    <SolidColorBrush x:Key="ButtonHover" Color="#4B5563" />
+    <SolidColorBrush x:Key="Popup" Color="#1F2937" />
+    <SolidColorBrush x:Key="ItemHover" Color="#17304F" />
+    <SolidColorBrush x:Key="Selection" Color="#1B4D8E" />
+    <SolidColorBrush x:Key="ScrollThumb" Color="#4B5563" />
+    <SolidColorBrush x:Key="ScrollThumbHover" Color="#6B7280" />
+    <SolidColorBrush x:Key="ProgressTrack" Color="#374151" />
+    <SolidColorBrush x:Key="ToolTipBg" Color="#F3F4F6" />
+    <SolidColorBrush x:Key="ToolTipFg" Color="#111827" />
+
+    <SolidColorBrush x:Key="Danger" Color="#F87171" />
+    <SolidColorBrush x:Key="DangerLight" Color="#3B1D22" />
+    <SolidColorBrush x:Key="Warn" Color="#FCD34D" />
+    <SolidColorBrush x:Key="WarnLight" Color="#33290F" />
+    <SolidColorBrush x:Key="WarnBorder" Color="#6B5314" />
+
+    <SolidColorBrush x:Key="StatusNewBg" Color="#17304F" />
+    <SolidColorBrush x:Key="StatusNewFg" Color="#8ECDFF" />
+    <SolidColorBrush x:Key="StatusDocBg" Color="#374151" />
+    <SolidColorBrush x:Key="StatusDocFg" Color="#D1D5DB" />
+    <SolidColorBrush x:Key="StatusDoneBg" Color="#0F3B2E" />
+    <SolidColorBrush x:Key="StatusDoneFg" Color="#6EE7B7" />
+    <SolidColorBrush x:Key="StatusFailBg" Color="#451A1A" />
+    <SolidColorBrush x:Key="StatusFailFg" Color="#FCA5A5" />
+    <SolidColorBrush x:Key="StatusRunBg" Color="#43300F" />
+    <SolidColorBrush x:Key="StatusRunFg" Color="#FCD34D" />
+
+    <BitmapImage x:Key="Logo" UriSource="pack://application:,,,/DokuVaultScanner;component/Assets/logo-hell.png" />
+</ResourceDictionary>

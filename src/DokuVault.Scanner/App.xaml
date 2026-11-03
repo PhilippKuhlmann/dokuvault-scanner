@@ -1,0 +1,20 @@
+<Application x:Class="DokuVault.Scanner.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <!--
+      First the colours (Themes/Light.xaml or Themes/Dark.xaml - the
+      ThemeManager swaps this first dictionary), then the controls, which
+      refer to the colours with DynamicResource so a switch takes effect at
+      once. The controls carry own templates: the WPF defaults (Aero2) draw
+      white boxes and arrows that no dark background survives.
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Light.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
