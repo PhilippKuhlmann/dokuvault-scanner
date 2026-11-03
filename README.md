@@ -92,6 +92,29 @@ dotnet publish src/DokuVault.Scanner -c Release -r win-x64 --self-contained -p:P
 
 Ergebnis: `publish/DokuVaultScanner.exe`.
 
+## Neue Version veröffentlichen
+
+GitHub baut die EXE selbst (`.github/workflows/release.yml`). Dafür reicht ein Tag:
+
+```bash
+git tag v1.1.0
+```
+
+```bash
+git push origin v1.1.0
+```
+
+Der Workflow läuft auf einem Windows-Runner und erledigt den Rest:
+
+1. Er testet den Stand.
+2. Er baut die EXE mit der Version aus dem Tag.
+3. Er erstellt das Release „DokuVault Scanner 1.1.0“ mit `DokuVaultScanner.exe`, der SHA-256-Datei und den Änderungen seit dem letzten Tag.
+
+Von Hand unter *Actions → Release → Run workflow* gestartet, ist es ein Probelauf: Der Workflow testet und baut nur, die
+EXE liegt dann sieben Tage als Artefakt beim Lauf, und es entsteht kein Release.
+
+Jeder Push auf `main` und jeder Pull Request lässt außerdem die Tests laufen (`.github/workflows/ci.yml`).
+
 ## Daten auf dem Rechner
 
 Alles liegt in `%LOCALAPPDATA%\DokuVault Scanner`:

@@ -1,0 +1,90 @@
+# A tag "v1.2.3" builds the single-file exe on Windows, tests it and
+# publishes it as GitHub release 1.2.3. Started by hand it is a dry run:
+# test and build only, the exe as a workflow artifact, no release.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          } else {
+            # Dry run: the version of the project plus the run number.
+            $version = "0.0.0-dry.$env:GITHUB_RUN_NUMBER"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "Version: $version"
+
+      - name: Test
+        run: dotnet test DokuVault.Scanner.sln -c Release
+
+      - name: Publish single-file exe
+        run: >
+          dotnet publish src/DokuVault.Scanner -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          -p:Version=${{ steps.version.outputs.version }}
+          -o publish
+
+      - name: Checksum
+        id: checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash publish/DokuVaultScanner.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+          "$hash  DokuVaultScanner.exe" | Out-File publish/DokuVaultScanner.exe.sha256 -Encoding ascii
+          "SHA-256: $hash"
+
+      - name: Keep the exe of a dry run
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DokuVaultScanner-${{ steps.version.outputs.version }}
+          path: |
+            publish/DokuVaultScanner.exe
+            publish/DokuVaultScanner.exe.sha256
+          retention-days: 7
+
+      - name: Create the release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA256: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          $notes = @"
+          **Download:** ``DokuVaultScanner.exe`` unter *Assets* – eine Datei, keine Installation, die .NET-Laufzeit ist enthalten (Windows 10/11, x64).
+
+          Die EXE ist nicht signiert; Windows SmartScreen fragt beim ersten Start nach („Weitere Informationen“ → „Trotzdem ausführen“).
+
+          SHA-256: ``$env:SHA256``
+          "@
+          gh release create $env:GITHUB_REF_NAME `
+            publish/DokuVaultScanner.exe publish/DokuVaultScanner.exe.sha256 `
+            --title "DokuVault Scanner $env:VERSION" `
+            --notes $notes `
+            --generate-notes `
+            --verify-tag
