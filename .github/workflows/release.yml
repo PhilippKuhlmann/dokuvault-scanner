@@ -54,7 +54,8 @@ jobs:
         run: |
           $hash = (Get-FileHash publish/DokuVaultScanner.exe -Algorithm SHA256).Hash.ToLower()
           "sha256=$hash" >> $env:GITHUB_OUTPUT
-          "$hash  DokuVaultScanner.exe" | Out-File publish/DokuVaultScanner.exe.sha256 -Encoding ascii
+          # LF, not the CRLF of Windows: sha256sum -c would take the CR for part of the file name.
+          Set-Content publish/DokuVaultScanner.exe.sha256 -Value "$hash  DokuVaultScanner.exe`n" -NoNewline -Encoding ascii
           "SHA-256: $hash"
 
       - name: Keep the exe of a dry run
