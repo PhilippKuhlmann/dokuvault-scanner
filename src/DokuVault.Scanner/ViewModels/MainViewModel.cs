@@ -23,10 +23,16 @@ public sealed class MainViewModel : ObservableObject
     private readonly HashSet<string> _unavailable = new();
     private readonly Dictionary<uint, DeviceRowViewModel> _rowsByAddress = new();
     private Dictionary<string, DocumentedAddress> _documented = new();
+    private Dictionary<string, DocumentedAddress> _documentedMacs = new(StringComparer.OrdinalIgnoreCase);
     private List<NetworkEntry> _networkEntries = new();
     private List<NetworkEntry> _coveredNetworks = new();
     private bool _networksReadable;
     private bool _customerLoaded;
+    private List<DhcpPool> _dhcpPools = new();
+    private IReadOnlyList<IpRange> _dhcpRanges = Array.Empty<IpRange>();
+    private string _dhcpText = "";
+    private string? _dhcpError;
+    private string? _dhcpSource;
     private OuiDatabase _oui = OuiDatabase.Empty;
     private Task? _ouiTask;
     private CancellationTokenSource? _scanCts;
@@ -136,6 +142,7 @@ public sealed class MainViewModel : ObservableObject
                 row.ApplyDefaultSite(value?.Value);
             }
             SuggestNetworks();
+            RestoreDhcp();
         }
     }
 
@@ -158,8 +165,39 @@ public sealed class MainViewModel : ObservableObject
     public string RangeText
     {
         get => _rangeText;
-        set => Set(ref _rangeText, value);
+        set
+        {
+            if (Set(ref _rangeText, value))
+                RestoreDhcp();
+        }
     }
+
+    /// <summary>The DHCP range(s): from the VLAN, or typed by hand. Only for the display here.</summary>
+    public string DhcpText
+    {
+        get => _dhcpText;
+        set
+        {
+            if (!Set(ref _dhcpText, value ?? ""))
+                return;
+            _dhcpSource = null;
+            if (string.IsNullOrWhiteSpace(_dhcpText))
+                _settings.DhcpRanges.Remove(DhcpKey);
+            else
+                _settings.DhcpRanges[DhcpKey] = _dhcpText.Trim();
+            ApplyDhcp();
+        }
+    }
+
+    public string DhcpLabel => _dhcpError is not null
+        ? "DHCP-Bereich – ungültig"
+        : _dhcpSource is not null ? "DHCP-Bereich (aus VLAN)" : "DHCP-Bereich";
+
+    public bool HasDhcpError => _dhcpError is not null;
+
+    public string DhcpHint => _dhcpError
+        ?? (_dhcpSource is not null ? $"Aus DokuVault: {_dhcpSource}. Überschreiben gilt nur hier in der App." : null)
+        ?? "Z. B. 192.168.1.100-199, mehrere mit Komma. Markiert die Geräte darin; DokuVault bleibt unverändert.";
 
     public bool IsScanning
     {
@@ -275,7 +313,9 @@ public sealed class MainViewModel : ObservableObject
             int total = Rows.Count, documented = Rows.Count(r => r.IsDocumented);
             if (total == 0)
                 return "Noch kein Scan.";
-            return $"{total} Geräte gefunden · {documented} schon dokumentiert · {total - documented} neu";
+            int dhcp = Rows.Count(r => r.InDhcpRange);
+            return $"{total} Geräte gefunden · {documented} schon dokumentiert · {total - documented} neu" +
+                   (dhcp > 0 ? $" · {dhcp} im DHCP-Bereich" : "");
         }
     }
 
@@ -317,8 +357,11 @@ public sealed class MainViewModel : ObservableObject
         RestoreTargetTypes();
         Sites.Clear();
         _documented = new Dictionary<string, DocumentedAddress>();
+        _documentedMacs = new Dictionary<string, DocumentedAddress>(StringComparer.OrdinalIgnoreCase);
         _networkEntries = new List<NetworkEntry>();
         _coveredNetworks = new List<NetworkEntry>();
+        _dhcpPools = new List<DhcpPool>();
+        RestoreDhcp();
         foreach (var row in Rows)
         {
             row.ResetNetwork();
@@ -359,6 +402,10 @@ public sealed class MainViewModel : ObservableObject
                 _networksReadable = true;
                 _networkEntries = plans.Networks.ToList();
                 _coveredNetworks = plans.Covered.ToList();
+                _dhcpPools = plans.DhcpPools.ToList();
+                foreach (var d in plans.DhcpDevices)
+                    _documentedMacs[d.Mac] = new DocumentedAddress("DHCP", d.Name, d.Type, d.Id, null, null);
+                RestoreDhcp();
                 _documented = plans.Addresses
                     .GroupBy(a => a.Address)
                     .ToDictionary(g => g.Key, g => g.FirstOrDefault(a => a.Name is not null) ?? g.First());
@@ -377,7 +424,7 @@ public sealed class MainViewModel : ObservableObject
                 row.DefaultSite = DefaultSite?.Value;
                 row.ApplyDefaultSite(DefaultSite?.Value);
                 if (row.ImportState != ImportState.Done)
-                    row.Documented = _documented.GetValueOrDefault(row.Address);
+                    row.Documented = DocumentedFor(row);
             }
             SuggestNetworks();
             _customerLoaded = true;
@@ -400,6 +447,51 @@ public sealed class MainViewModel : ObservableObject
         }
         UpdateCounts();
         RowsView.Refresh();
+    }
+
+    // ---- DHCP range
+
+    private string DhcpKey => $"{Customer?.Slug}|{RangeText.Trim()}";
+
+    /// <summary>
+    /// What belongs to this customer and scanned range: the range typed
+    /// earlier, otherwise what the VLANs document - with two sites on the
+    /// same private range, the pool of the chosen site.
+    /// </summary>
+    private void RestoreDhcp()
+    {
+        string text = "";
+        string? source = null;
+        if (_settings.DhcpRanges.TryGetValue(DhcpKey, out var stored))
+        {
+            text = stored;
+        }
+        else if (IpRange.TryParse(RangeText, out var scan, out _))
+        {
+            var pools = _dhcpPools.Where(p => p.Range.Overlaps(scan!)).ToList();
+            int? site = int.TryParse(DefaultSite?.Value, out var s) ? s : null;
+            if (pools.Any(p => p.SiteId == site))
+                pools = pools.Where(p => p.SiteId == site).ToList();
+            text = string.Join(", ", pools.Select(p => p.Range.ToInput()).Distinct());
+            source = pools.Count > 0 ? string.Join(", ", pools.Select(p => p.NetworkName).Distinct()) : null;
+        }
+        _dhcpSource = source;
+        Set(ref _dhcpText, text, nameof(DhcpText));
+        ApplyDhcp();
+    }
+
+    /// <summary>While the text is unreadable the last readable range stays marked.</summary>
+    private void ApplyDhcp()
+    {
+        if (IpRange.TryParseList(_dhcpText, out var ranges, out var error))
+            _dhcpRanges = ranges;
+        _dhcpError = error;
+        foreach (var row in Rows)
+            row.InDhcpRange = _dhcpRanges.Any(r => r.Contains(row.Device.Address));
+        OnPropertyChanged(nameof(DhcpLabel));
+        OnPropertyChanged(nameof(HasDhcpError));
+        OnPropertyChanged(nameof(DhcpHint));
+        OnPropertyChanged(nameof(CountText));
     }
 
     // ---- forms, loaded on first use
@@ -579,7 +671,8 @@ public sealed class MainViewModel : ObservableObject
                 DefaultSite = DefaultSite?.Value,
             };
             row.ApplyDefaultSite(DefaultSite?.Value);
-            row.Documented = _documented.GetValueOrDefault(row.Address);
+            row.Documented = DocumentedFor(row);
+            row.InDhcpRange = _dhcpRanges.Any(r => r.Contains(device.Address));
             row.PropertyChanged += RowChanged;
             _rowsByAddress[device.SortKey] = row;
             Rows.Add(row);
@@ -590,6 +683,9 @@ public sealed class MainViewModel : ObservableObject
             return; // a row of an earlier scan, already taken over
         }
         row.Refresh();
+        // The MAC often arrives after the row: only now a device per DHCP is known.
+        if (row.Documented is null && row.ImportState != ImportState.Done)
+            row.Documented = DocumentedFor(row);
         UpdateCounts();
     }
 
@@ -607,6 +703,11 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CountText));
         CommandManager.InvalidateRequerySuggested();
     }
+
+    /// <summary>By the address, or for a device per DHCP by its MAC.</summary>
+    private DocumentedAddress? DocumentedFor(DeviceRowViewModel row) =>
+        _documented.GetValueOrDefault(row.Address)
+        ?? (row.Device.Mac is { } mac && !row.Device.MacRandomized ? _documentedMacs.GetValueOrDefault(mac) : null);
 
     private bool Matches(DeviceRowViewModel row)
     {
@@ -641,7 +742,17 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- import
 
-    private sealed record ImportJob(DeviceRowViewModel Row, string Type, Dictionary<string, object?> Values, int? NetworkId, string? Label);
+    private sealed record ImportJob(DeviceRowViewModel Row, string Type, Dictionary<string, object?> Values, int? NetworkId, string? Label, bool Dhcp);
+
+    /// <summary>Per DHCP the MAC in the label is all that tells the device again - it must not get lost.</summary>
+    private static string? ImportLabel(DeviceRowViewModel row)
+    {
+        var label = string.IsNullOrWhiteSpace(row.IpLabel) ? null : row.IpLabel.Trim();
+        if (!row.UseDhcp || row.Device.Mac is not { } mac || row.Device.MacRandomized ||
+            label?.Contains(mac, StringComparison.OrdinalIgnoreCase) == true)
+            return label;
+        return label is null ? $"MAC {mac}" : $"{label} · MAC {mac}";
+    }
 
     private async Task ImportAsync()
     {
@@ -665,7 +776,7 @@ public sealed class MainViewModel : ObservableObject
         // What is imported is fixed here; the rows stay locked until done,
         // so a change in the list cannot reach a half-finished import.
         var jobs = rows.Select(r => new ImportJob(r, r.Target.Key!, r.Fields.ToDictionary(f => f.Name, f => f.Value),
-            r.Network.Id, string.IsNullOrWhiteSpace(r.IpLabel) ? null : r.IpLabel.Trim())).ToList();
+            r.Network.Id, ImportLabel(r), r.UseDhcp)).ToList();
         foreach (var job in jobs)
             job.Row.Locked = true;
 
@@ -709,7 +820,7 @@ public sealed class MainViewModel : ObservableObject
                     }
 
                     var result = await importer.ImportAsync(new ImportRequest(
-                        customer.Slug, job.Type, job.Values, row.Device.Address, job.NetworkId, job.Label), CancellationToken.None);
+                        customer.Slug, job.Type, job.Values, row.Device.Address, job.NetworkId, job.Label, job.Dhcp), CancellationToken.None);
 
                     row.ImportMessage = result.Message;
                     switch (result.Outcome)
@@ -720,8 +831,13 @@ public sealed class MainViewModel : ObservableObject
                             row.ImportState = ImportState.Done;
                             row.IsChecked = false;
                             var name = job.Values.GetValueOrDefault("name") as string ?? row.DisplayName;
-                            _documented[row.Address] = new DocumentedAddress(row.Address, name, job.Type, result.Id, job.NetworkId, null);
-                            row.Documented = _documented[row.Address];
+                            var documented = new DocumentedAddress(row.Address, name, job.Type, result.Id, job.NetworkId, null);
+                            // Per DHCP the address stays free for others; the MAC is what counts.
+                            if (!job.Dhcp)
+                                _documented[row.Address] = documented;
+                            else if (row.Device.Mac is { } mac && !row.Device.MacRandomized)
+                                _documentedMacs[mac] = documented;
+                            row.Documented = documented;
                             created++;
                             break;
                         case ImportOutcome.AlreadyDocumented:
@@ -789,6 +905,12 @@ public sealed class MainViewModel : ObservableObject
     private static bool Validate(DeviceRowViewModel row)
     {
         bool ok = row.Fields.Count > 0;
+        row.NetworkError = null;
+        if (row.UseDhcp && row.Network.Id is null)
+        {
+            row.NetworkError = "Für „per DHCP“ braucht DokuVault ein VLAN – eins wählen oder den Haken entfernen.";
+            ok = false;
+        }
         foreach (var f in row.Fields)
         {
             f.Error = null;

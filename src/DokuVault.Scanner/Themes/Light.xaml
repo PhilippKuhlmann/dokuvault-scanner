@@ -37,6 +37,12 @@
     <SolidColorBrush x:Key="WarnLight" Color="#FFFBEB" />
     <SolidColorBrush x:Key="WarnBorder" Color="#FDE68A" />
 
+    <!-- DHCP range: slate, as in the IP plan of the web app -->
+    <SolidColorBrush x:Key="DhcpRow" Color="#F1F5F9" />
+    <SolidColorBrush x:Key="DhcpBar" Color="#94A3B8" />
+    <SolidColorBrush x:Key="DhcpPillBg" Color="#E2E8F0" />
+    <SolidColorBrush x:Key="DhcpPillFg" Color="#334155" />
+
     <!-- Status pills in the list -->
     <SolidColorBrush x:Key="StatusNewBg" Color="#EEF7FF" />
     <SolidColorBrush x:Key="StatusNewFg" Color="#1A5CAD" />

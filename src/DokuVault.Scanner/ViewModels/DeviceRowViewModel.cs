@@ -52,6 +52,10 @@ public sealed class DeviceRowViewModel : ObservableObject
     private bool _ipLabelTouched;
     private int? _createdId;
     private bool _locked;
+    private bool _inDhcpRange;
+    private bool _useDhcp;
+    private bool _useDhcpChosen;
+    private string? _networkError;
 
     /// <param name="form">The loaded form of a type, or null while it is not loaded.</param>
     /// <param name="needForm">Asks for a form that is not loaded yet; RebuildForType follows.</param>
@@ -164,6 +168,43 @@ public sealed class DeviceRowViewModel : ObservableObject
 
     public bool IsDocumented => _documented is not null;
 
+    /// <summary>The address lies in the DHCP range: the list and the detail panel show it.</summary>
+    public bool InDhcpRange
+    {
+        get => _inDhcpRange;
+        set
+        {
+            if (!Set(ref _inDhcpRange, value))
+                return;
+            // The range suggests "per DHCP"; a choice of the user stays.
+            if (!_useDhcpChosen && Set(ref _useDhcp, value, nameof(UseDhcp)))
+                OnPropertyChanged(nameof(DhcpWithoutMac));
+        }
+    }
+
+    /// <summary>Documented "per DHCP": no address, only the VLAN.</summary>
+    public bool UseDhcp
+    {
+        get => _useDhcp;
+        set
+        {
+            if (!Set(ref _useDhcp, value))
+                return;
+            _useDhcpChosen = true;
+            NetworkError = null;
+            OnPropertyChanged(nameof(DhcpWithoutMac));
+        }
+    }
+
+    /// <summary>Per DHCP only the MAC tells the device again in a later scan.</summary>
+    public bool DhcpWithoutMac => _useDhcp && (Device.Mac is null || Device.MacRandomized);
+
+    public string? NetworkError
+    {
+        get => _networkError;
+        set => Set(ref _networkError, value);
+    }
+
     public bool CanImport => !IsDocumented && ImportState != ImportState.Done;
 
     /// <summary>Set while an import holds this row: its values are taken already.</summary>
@@ -231,7 +272,10 @@ public sealed class DeviceRowViewModel : ObservableObject
         {
             // null is the ComboBox losing its list (customer change), not a choice.
             if (value is not null && Set(ref _network, value))
+            {
                 _networkChosen = true;
+                NetworkError = null;
+            }
         }
     }
 
@@ -264,7 +308,7 @@ public sealed class DeviceRowViewModel : ObservableObject
                  {
                      nameof(Mac), nameof(Vendor), nameof(Model), nameof(FoundName), nameof(Hostname), nameof(Services),
                      nameof(PingText), nameof(SuggestionText), nameof(Confidence), nameof(Reasons), nameof(Findings),
-                     nameof(IsCandidate), nameof(DisplayName),
+                     nameof(IsCandidate), nameof(DisplayName), nameof(DhcpWithoutMac),
                  })
             OnPropertyChanged(name);
     }

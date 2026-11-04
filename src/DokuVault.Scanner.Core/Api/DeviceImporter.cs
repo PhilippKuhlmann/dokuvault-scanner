@@ -8,7 +8,8 @@ public sealed record ImportRequest(
     IReadOnlyDictionary<string, object?> Values,
     IPAddress Address,
     int? NetworkId,
-    string? IpLabel);
+    string? IpLabel,
+    bool Dhcp = false);
 
 public enum ImportOutcome
 {
@@ -41,6 +42,10 @@ public sealed class DeviceImporter
 
     public async Task<ImportResult> ImportAsync(ImportRequest request, CancellationToken cancellationToken)
     {
+        // Checked first: afterwards the device would exist without its address.
+        if (request.Dhcp && request.NetworkId is null)
+            return new ImportResult(ImportOutcome.Failed, null, "Für „per DHCP“ braucht DokuVault ein VLAN.");
+
         ObjectDetail created;
         try
         {
@@ -53,8 +58,11 @@ public sealed class DeviceImporter
 
         try
         {
-            await _client.AddIpAddressAsync(request.Type, created.Id, request.Address.ToString(), request.NetworkId,
-                request.IpLabel, cancellationToken);
+            if (request.Dhcp)
+                await _client.AddDhcpAddressAsync(request.Type, created.Id, request.NetworkId!.Value, request.IpLabel, cancellationToken);
+            else
+                await _client.AddIpAddressAsync(request.Type, created.Id, request.Address.ToString(), request.NetworkId,
+                    request.IpLabel, cancellationToken);
             return new ImportResult(ImportOutcome.Created, created.Id, "Angelegt");
         }
         catch (DokuVaultApiException e) when (e.Status == HttpStatusCode.UnprocessableEntity && e.FieldErrors.ContainsKey("address"))

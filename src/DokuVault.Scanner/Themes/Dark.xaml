@@ -40,6 +40,11 @@
     <SolidColorBrush x:Key="WarnLight" Color="#33290F" />
     <SolidColorBrush x:Key="WarnBorder" Color="#6B5314" />
 
+    <SolidColorBrush x:Key="DhcpRow" Color="#2A3547" />
+    <SolidColorBrush x:Key="DhcpBar" Color="#64748B" />
+    <SolidColorBrush x:Key="DhcpPillBg" Color="#475569" />
+    <SolidColorBrush x:Key="DhcpPillFg" Color="#E2E8F0" />
+
     <SolidColorBrush x:Key="StatusNewBg" Color="#17304F" />
     <SolidColorBrush x:Key="StatusNewFg" Color="#8ECDFF" />
     <SolidColorBrush x:Key="StatusDocBg" Color="#374151" />

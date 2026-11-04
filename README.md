@@ -44,6 +44,23 @@ geändert werden.
    - Ist die Adresse beim Kunden schon vergeben, nimmt sie das neue Gerät wieder zurück (Papierkorb),
      damit kein Duplikat entsteht.
 
+## DHCP-Bereich
+
+Das Feld „DHCP-Bereich“ neben dem Scan-Bereich belegt die App aus dem VLAN vor, das zum Scan-Bereich passt
+(`dhcpStart`/`dhcpEnd` in DokuVault, bei zwei Standorten mit demselben Netz der des gewählten Standorts). Es lässt
+sich überschreiben: `192.168.1.100-199`, mehrere Bereiche mit Komma. Die Eingabe merkt sich die App je Kunde und
+Scan-Bereich; leert man das Feld, gilt beim nächsten Laden wieder der Wert aus dem VLAN.
+
+Geräte darin bekommen in der Liste einen Randstrich, eine getönte Zeile und die Marke „DHCP“, in den Farben des
+IP-Plans der Weboberfläche. Das Feld selbst ändert nichts am VLAN in DokuVault.
+
+Geräte darin legt die App **per DHCP** an: ohne Adresse, nur mit VLAN und Bezeichnung. Rechts lässt sich das je Gerät
+abwählen, zum Beispiel für eine feste Adresse mitten im Pool. Per DHCP braucht DokuVault immer ein VLAN.
+
+Weil dann keine Adresse gespeichert ist, greift die Sperre „Adresse schon vergeben“ nicht. Die App schreibt deshalb die
+MAC in die Bezeichnung und erkennt das Gerät daran wieder. Dafür ruft sie beim Laden eines Kunden jedes per DHCP
+dokumentierte Gerät einmal ab. Ein Gerät ohne feste MAC (zufällige MAC, anderes Subnetz) erkennt sie später nicht.
+
 ## Darstellung
 
 Hell, dunkel oder „wie Windows“. Die letzte Einstellung folgt dem App-Modus von Windows, auch während die App

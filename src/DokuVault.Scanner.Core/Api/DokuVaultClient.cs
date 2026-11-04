@@ -187,6 +187,8 @@ public sealed partial class DokuVaultClient : IDisposable
         var warnings = new List<string>();
         var networks = (await NetworksAsync(customer, cancellationToken)).Entries.ToList();
         var covered = new List<NetworkEntry>();
+        var pools = new List<DhcpPool>();
+        var dhcpInPlans = new List<PlanDevice>();
         var result = new List<DocumentedAddress>();
         foreach (var network in networks.Where(n => n.Error is null))
         {
@@ -206,8 +208,80 @@ public sealed partial class DokuVaultClient : IDisposable
             else
                 covered.Add(network);
             result.AddRange(PlanAddresses(detail));
+            if (PoolOf(network, detail) is { } pool)
+                pools.Add(pool);
+            dhcpInPlans.AddRange(PlanDhcpDevices(detail));
         }
-        return new DocumentedSet(result, networks, covered, warnings);
+        var dhcpDevices = await DhcpDevicesAsync(dhcpInPlans, warnings, cancellationToken);
+        return new DocumentedSet(result, networks, covered, pools, dhcpDevices, warnings);
+    }
+
+    /// <summary>The devices a plan lists as served by DHCP - without the fixed addresses in the pool.</summary>
+    internal static IEnumerable<PlanDevice> PlanDhcpDevices(NetworkDetail detail) =>
+        (detail.Rows ?? Array.Empty<PlanRow>())
+        .Where(r => r.Kind == "dhcp")
+        .SelectMany(r => r.Devices ?? Array.Empty<PlanDevice>())
+        .Where(d => !d.InPool)
+        .Concat(detail.DhcpOutsideRange ?? Array.Empty<PlanDevice>());
+
+    /// <summary>
+    /// A device per DHCP has no address to compare with a scan - only the MAC
+    /// in the label of its address tells it again, and the search does not
+    /// read labels. So one call per such device.
+    /// </summary>
+    private async Task<List<DocumentedDhcpDevice>> DhcpDevicesAsync(
+        IEnumerable<PlanDevice> inPlans, List<string> warnings, CancellationToken cancellationToken)
+    {
+        var result = new List<DocumentedDhcpDevice>();
+        int unknown = 0;
+        var seen = new HashSet<(string, int)>();
+        foreach (var device in inPlans)
+        {
+            if (device.Type is not { } type || device.Id is not { } id)
+            {
+                unknown++;
+                continue;
+            }
+            if (!seen.Add((type, id)))
+                continue;
+            try
+            {
+                var detail = await ObjectAsync(type, id, cancellationToken);
+                var macs = (detail.IpAddresses ?? Array.Empty<IpEntry>())
+                    .Where(ip => ip.Dhcp)
+                    .SelectMany(ip => MacsIn(ip.Label))
+                    .Distinct()
+                    .ToList();
+                if (macs.Count == 0)
+                    unknown++;
+                result.AddRange(macs.Select(mac => new DocumentedDhcpDevice(mac, detail.Name, type, id)));
+            }
+            catch (DokuVaultApiException e) when (!e.IsUnauthorized)
+            {
+                unknown++;
+            }
+        }
+        if (unknown > 0)
+            warnings.Add($"{unknown} per DHCP dokumentierte Geräte tragen keine lesbare MAC – der Abgleich erkennt sie nicht wieder.");
+        return result;
+    }
+
+    internal static IEnumerable<string> MacsIn(string? text) =>
+        string.IsNullOrEmpty(text)
+            ? Array.Empty<string>()
+            : MacPattern().Matches(text).Select(m => ArpResolver.Format(Convert.FromHexString(m.Value.Replace(":", "").Replace("-", ""))));
+
+    [GeneratedRegex(@"\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}\b")]
+    private static partial Regex MacPattern();
+
+    /// <summary>The documented DHCP range, if both ends are addresses in the right order.</summary>
+    internal static DhcpPool? PoolOf(NetworkEntry network, NetworkDetail detail)
+    {
+        if (detail.DhcpStart is null || detail.DhcpEnd is null ||
+            !IpRange.TryParseV4(detail.DhcpStart, out var start) || !IpRange.TryParseV4(detail.DhcpEnd, out var end))
+            return null;
+        uint first = IpRange.ToUInt(start), last = IpRange.ToUInt(end);
+        return first > last ? null : new DhcpPool(network.Name, network.Site?.Id, new IpRange(first, last));
     }
 
     internal static IEnumerable<DocumentedAddress> PlanAddresses(NetworkDetail detail)
@@ -286,6 +360,16 @@ public sealed partial class DokuVaultClient : IDisposable
         var body = new Dictionary<string, object?> { ["address"] = address };
         if (networkId is not null)
             body["network_id"] = networkId;
+        if (!string.IsNullOrWhiteSpace(label))
+            body["label"] = label;
+        return SendAsync<List<IpEntry>>(HttpMethod.Post, $"objects/{Esc(type)}/{id}/ip-addresses", body, true, cancellationToken);
+    }
+
+    /// <summary>"Per DHCP": no address, only the VLAN. The server has no uniqueness check here.</summary>
+    public Task<List<IpEntry>> AddDhcpAddressAsync(
+        string type, int id, int networkId, string? label, CancellationToken cancellationToken)
+    {
+        var body = new Dictionary<string, object?> { ["dhcp"] = true, ["network_id"] = networkId };
         if (!string.IsNullOrWhiteSpace(label))
             body["label"] = label;
         return SendAsync<List<IpEntry>>(HttpMethod.Post, $"objects/{Esc(type)}/{id}/ip-addresses", body, true, cancellationToken);

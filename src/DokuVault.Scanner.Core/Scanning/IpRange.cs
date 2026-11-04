@@ -61,11 +61,50 @@ public sealed class IpRange
         return new IpRange(network + 1, broadcast - 1, prefixLength);
     }
 
-    public static bool TryParse(string? text, out IpRange? range, out string? error)
+    public bool Overlaps(IpRange other) => First <= other.Last && other.First <= Last;
+
+    /// <summary>As typed into a field: "192.168.1.100-199", which TryParse reads back.</summary>
+    public string ToInput()
+    {
+        if (First == Last)
+            return ToAddress(First).ToString();
+        return (First >> 8) == (Last >> 8)
+            ? $"{ToAddress(First)}-{Last & 0xFF}"
+            : $"{ToAddress(First)}-{ToAddress(Last)}";
+    }
+
+    /// <summary>
+    /// Several ranges separated by comma or semicolon; empty means none. No
+    /// size limit: these are only compared against, never scanned.
+    /// </summary>
+    public static bool TryParseList(string? text, out IReadOnlyList<IpRange> ranges, out string? error)
+    {
+        ranges = Array.Empty<IpRange>();
+        error = null;
+        var result = new List<IpRange>();
+        foreach (var part in (text ?? "").Split(',', ';'))
+        {
+            if (string.IsNullOrWhiteSpace(part))
+                continue;
+            if (!TryParse(part, out var range, out var partError, long.MaxValue))
+            {
+                error = $"„{part.Trim()}“: {partError}";
+                return false;
+            }
+            result.Add(range!);
+        }
+        ranges = result;
+        return true;
+    }
+
+    public static bool TryParse(string? text, out IpRange? range, out string? error) =>
+        TryParse(text, out range, out error, MaxHosts);
+
+    private static bool TryParse(string? text, out IpRange? range, out string? error, long maxHosts)
     {
         range = null;
         error = null;
-        text = text?.Trim();
+        text = text?.Trim().Replace('–', '-');
         if (string.IsNullOrEmpty(text))
         {
             error = "Bitte einen Bereich eingeben, z. B. 192.168.1.0/24.";
@@ -125,9 +164,9 @@ public sealed class IpRange
             return false;
         }
 
-        if (range.Count > MaxHosts)
+        if (range.Count > maxHosts)
         {
-            error = $"Der Bereich umfasst {range.Count:N0} Adressen – höchstens {MaxHosts:N0} sind erlaubt (/20).";
+            error = $"Der Bereich umfasst {range.Count:N0} Adressen – höchstens {maxHosts:N0} sind erlaubt (/20).";
             range = null;
             return false;
         }

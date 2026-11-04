@@ -64,6 +64,13 @@
         </Style.Triggers>
     </Style>
 
+    <Style TargetType="Border" x:Key="DhcpPill">
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="4,1" />
+        <Setter Property="Background" Value="{DynamicResource DhcpPillBg}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource DhcpPillFg}" />
+    </Style>
+
     <!-- ToolTip -->
     <Style TargetType="ToolTip">
         <Setter Property="Background" Value="{DynamicResource ToolTipBg}" />
@@ -420,6 +427,10 @@
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource LineSoft}" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
+    <!-- Same 3 pixels as the DHCP bar of the rows, so headers and cells line up. -->
+    <Style TargetType="DataGridColumnHeadersPresenter">
+        <Setter Property="Margin" Value="3,0,0,0" />
+    </Style>
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{DynamicResource Subtle}" />
         <Setter Property="Foreground" Value="{DynamicResource Muted}" />
@@ -485,7 +496,15 @@
     <Style TargetType="DataGridRow">
         <Setter Property="MinHeight" Value="34" />
         <Setter Property="Background" Value="{DynamicResource Card}" />
+        <!-- Always there, transparent: the DHCP bar must not shift the columns. -->
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Style.Triggers>
+            <!-- First, so hovering and selecting still win over the tint. -->
+            <DataTrigger Binding="{Binding InDhcpRange}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource DhcpRow}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource DhcpBar}" />
+            </DataTrigger>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource Subtle}" />
             </Trigger>

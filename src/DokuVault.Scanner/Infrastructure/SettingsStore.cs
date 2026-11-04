@@ -19,6 +19,9 @@ public sealed class AppSettings
     /// <summary>"System", "Light" or "Dark".</summary>
     public string Theme { get; set; } = "System";
 
+    /// <summary>DHCP ranges typed by hand, per customer and scanned range ("slug|range").</summary>
+    public Dictionary<string, string> DhcpRanges { get; set; } = new();
+
     /// <summary>Last chosen site per customer slug.</summary>
     public Dictionary<string, string> Sites { get; set; } = new();
 }

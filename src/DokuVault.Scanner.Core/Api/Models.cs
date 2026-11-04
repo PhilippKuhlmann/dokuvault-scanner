@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DokuVault.Scanner.Core.Scanning;
 
 namespace DokuVault.Scanner.Core.Api;
 
@@ -112,6 +113,8 @@ public sealed record PlanRow(
 public sealed record NetworkDetail(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("dhcp_start")] string? DhcpStart,
+    [property: JsonPropertyName("dhcp_end")] string? DhcpEnd,
     [property: JsonPropertyName("rows")] IReadOnlyList<PlanRow>? Rows,
     [property: JsonPropertyName("truncated")] JsonElement Truncated,
     [property: JsonPropertyName("dhcp_outside_range")] IReadOnlyList<PlanDevice>? DhcpOutsideRange);
@@ -133,7 +136,15 @@ public sealed record DocumentedSet(
     IReadOnlyList<DocumentedAddress> Addresses,
     IReadOnlyList<NetworkEntry> Networks,
     IReadOnlyList<NetworkEntry> Covered,
+    IReadOnlyList<DhcpPool> DhcpPools,
+    IReadOnlyList<DocumentedDhcpDevice> DhcpDevices,
     IReadOnlyList<string> Warnings);
+
+/// <summary>The DHCP range documented at a VLAN.</summary>
+public sealed record DhcpPool(string NetworkName, int? SiteId, IpRange Range);
+
+/// <summary>A device documented "per DHCP", known by the MAC in the label of its address.</summary>
+public sealed record DocumentedDhcpDevice(string Mac, string Name, string Type, int Id);
 
 /// <summary>An address that DokuVault already holds, with who holds it.</summary>
 public sealed record DocumentedAddress(string Address, string? Name, string? Type, int? Id, int? NetworkId, string? NetworkName);

@@ -5,7 +5,7 @@
         Title="DokuVault Scanner"
         Style="{StaticResource AppWindow}"
         Icon="pack://application:,,,/DokuVaultScanner;component/Assets/app.ico"
-        Width="1480" Height="860" MinWidth="1000" MinHeight="600"
+        Width="1480" Height="860" MinWidth="1180" MinHeight="600"
         WindowStartupLocation="CenterScreen">
     <Window.InputBindings>
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static inf:ThemeCommands.Toggle}" />
@@ -92,22 +92,37 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                     <TextBlock Text="Netzwerk dieses Rechners" Style="{StaticResource Label}" />
-                    <ComboBox ItemsSource="{Binding LocalNetworkChoices}" SelectedItem="{Binding LocalNetwork}" Width="330"
+                    <ComboBox ItemsSource="{Binding LocalNetworkChoices}" SelectedItem="{Binding LocalNetwork}" Width="290"
                               IsEnabled="{Binding IsScanning, Converter={x:Static inf:Inverse.Instance}}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Margin="0,0,12,0">
                     <TextBlock Text="Bereich" Style="{StaticResource Label}" />
-                    <TextBox Text="{Binding RangeText, UpdateSourceTrigger=PropertyChanged}" Width="210"
+                    <TextBox Text="{Binding RangeText, UpdateSourceTrigger=PropertyChanged}" Width="170"
                              ToolTip="CIDR (192.168.1.0/24), Spanne (192.168.1.10-192.168.1.80 oder 192.168.1.10-80) oder eine Adresse"
                              IsEnabled="{Binding IsScanning, Converter={x:Static inf:Inverse.Instance}}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding DhcpLabel}" ToolTip="{Binding DhcpHint}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Label}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDhcpError}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBox Text="{Binding DhcpText, UpdateSourceTrigger=PropertyChanged}" Width="180" ToolTip="{Binding DhcpHint}" />
+                </StackPanel>
+                <StackPanel Grid.Column="3" Margin="0,0,12,0">
                     <TextBlock Text="SNMP-Community" Style="{StaticResource Label}" />
                     <StackPanel Orientation="Horizontal">
                         <CheckBox IsChecked="{Binding UseSnmp}" VerticalAlignment="Center" Margin="0,0,6,0"
@@ -115,7 +130,7 @@
                         <TextBox Text="{Binding SnmpCommunity}" Width="110" IsEnabled="{Binding UseSnmp}" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
+                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Bottom">
                     <Button Content="Herstellerliste" Style="{StaticResource Link}" Command="{Binding UpdateVendorsCommand}"
                             VerticalAlignment="Center" Margin="0,0,16,0"
                             ToolTip="Die Herstellerliste der MAC-Adressen (IEEE) neu laden" />
@@ -124,7 +139,7 @@
                     <Button Content="Netzwerk scannen" Style="{StaticResource Primary}" Command="{Binding ScanCommand}" MinWidth="130" />
                 </StackPanel>
 
-                <Grid Grid.Row="1" Grid.ColumnSpan="5" Margin="0,10,0,0"
+                <Grid Grid.Row="1" Grid.ColumnSpan="6" Margin="0,10,0,0"
                       Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}">
                     <ProgressBar Height="4" Minimum="0" Maximum="{Binding ProgressTotal, Mode=OneWay}" Value="{Binding ProgressDone, Mode=OneWay}"
                                  BorderThickness="0" />
@@ -181,7 +196,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Status" Width="120" SortMemberPath="StatusText">
+                                <DataGridTemplateColumn Header="Status" Width="110" SortMemberPath="StatusText">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Style="{StaticResource StatusPill}" Padding="7,2" HorizontalAlignment="Left"
@@ -191,10 +206,17 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="IP-Adresse" Width="118" MinWidth="118" SortMemberPath="SortKey">
+                                <DataGridTemplateColumn Header="IP-Adresse" Width="160" MinWidth="160" SortMemberPath="SortKey">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Address}" Style="{StaticResource Cell}" FontFamily="Consolas" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Address}" Style="{StaticResource Cell}" FontFamily="Consolas" />
+                                                <Border Style="{StaticResource DhcpPill}" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                        ToolTip="Liegt im DHCP-Bereich"
+                                                        Visibility="{Binding InDhcpRange, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="DHCP" FontSize="10" FontWeight="SemiBold" />
+                                                </Border>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -219,14 +241,14 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="MAC" Width="150" MinWidth="150" SortMemberPath="Mac">
+                                <DataGridTemplateColumn Header="MAC" Width="140" MinWidth="140" SortMemberPath="Mac">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Mac}" Style="{StaticResource MutedCell}" FontFamily="Consolas" FontSize="12" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Erkannt als" Width="110" SortMemberPath="SuggestionText">
+                                <DataGridTemplateColumn Header="Erkannt als" Width="100" SortMemberPath="SuggestionText">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource MutedCell}" ToolTip="{Binding Reasons}">
@@ -235,7 +257,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Übernehmen als" Width="160" SortMemberPath="Target.Label">
+                                <DataGridTemplateColumn Header="Übernehmen als" Width="150" SortMemberPath="Target.Label">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <ComboBox ItemsSource="{Binding DataContext.TargetTypes, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -279,6 +301,11 @@
                             <TextBlock Text="{Binding Address}" Style="{StaticResource H1}" FontFamily="Consolas" />
                             <TextBlock Text="{Binding FoundName}" Foreground="{DynamicResource Muted}" Margin="0,2,0,0" TextWrapping="Wrap" />
 
+                            <Border Style="{StaticResource DhcpPill}" Padding="10,7" Margin="0,12,0,0"
+                                    Visibility="{Binding InDhcpRange, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Liegt im DHCP-Bereich – die Adresse kann sich ändern." TextWrapping="Wrap" />
+                            </Border>
+
                             <Border Style="{StaticResource StatusPill}" Padding="10,7" Margin="0,12,0,0"
                                     Visibility="{Binding ImportMessage, Converter={x:Static inf:VisibleWhenSet.Instance}}">
                                 <TextBlock Text="{Binding ImportMessage}" TextWrapping="Wrap" />
@@ -286,7 +313,7 @@
                             <Border CornerRadius="3" Padding="10,7" Margin="0,12,0,0" Background="{DynamicResource StatusDocBg}"
                                     Visibility="{Binding Documented, Converter={x:Static inf:VisibleWhenSet.Instance}}">
                                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource StatusDocFg}">
-                                    <Run Text="Diese Adresse ist in DokuVault schon dokumentiert" /><Run Text="{Binding Documented.Name, Mode=OneWay, StringFormat=': {0}'}" /><Run Text="." />
+                                    <Run Text="In DokuVault schon dokumentiert" /><Run Text="{Binding Documented.Name, Mode=OneWay, StringFormat=': {0}'}" /><Run Text="." />
                                 </TextBlock>
                             </Border>
 
@@ -316,9 +343,16 @@
                                 </ItemsControl>
 
                                 <TextBlock Text="IP-Adresse" Style="{StaticResource H2}" Margin="0,12,0,8" />
-                                <TextBlock Text="VLAN" Style="{StaticResource Label}" />
+                                <CheckBox Content="Per DHCP (keine feste Adresse)" IsChecked="{Binding UseDhcp}" Margin="0,0,0,4" />
+                                <TextBlock Text="Ohne feste MAC erkennt die App das Gerät beim nächsten Scan nicht wieder."
+                                           Foreground="{DynamicResource Warn}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"
+                                           Visibility="{Binding DhcpWithoutMac, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Text="VLAN" Style="{StaticResource Label}" Margin="0,8,0,4" />
                                 <ComboBox ItemsSource="{Binding DataContext.NetworkChoices, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          SelectedItem="{Binding Network}" DisplayMemberPath="Label" Margin="0,0,0,10" />
+                                          SelectedItem="{Binding Network}" DisplayMemberPath="Label" Margin="0,0,0,3" />
+                                <TextBlock Text="{Binding NetworkError}" Foreground="{DynamicResource Danger}" FontSize="12" TextWrapping="Wrap"
+                                           Visibility="{Binding NetworkError, Converter={x:Static inf:VisibleWhenSet.Instance}}" />
+                                <Border Height="7" />
                                 <TextBlock Text="Bezeichnung der Adresse" Style="{StaticResource Label}" />
                                 <TextBox Text="{Binding IpLabel, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="DokuVault hat kein MAC-Feld – die MAC steht deshalb hier." />
