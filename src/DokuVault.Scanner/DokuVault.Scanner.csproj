@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>DokuVaultScanner</AssemblyName>
     <RootNamespace>DokuVault.Scanner</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>DokuVault Scanner</Product>
     <Company>DokuVault</Company>
     <Description>Scannt das Netzwerk und übernimmt IoT-Geräte und Drucker in DokuVault.</Description>

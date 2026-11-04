@@ -5,7 +5,7 @@ using Microsoft.Win32;
 
 namespace DokuVault.Scanner.Infrastructure;
 
-public enum ThemeMode
+public enum AppTheme
 {
     System,
     Light,
@@ -23,17 +23,17 @@ public static class ThemeManager
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private static bool _listening;
 
-    public static ThemeMode Mode { get; private set; } = ThemeMode.System;
+    public static AppTheme Mode { get; private set; } = AppTheme.System;
 
     public static bool IsDark { get; private set; }
 
     /// <summary>Raised after every change of the colours.</summary>
     public static event Action? Changed;
 
-    public static void Apply(ThemeMode mode)
+    public static void Apply(AppTheme mode)
     {
         Mode = mode;
-        bool dark = mode == ThemeMode.Dark || (mode == ThemeMode.System && SystemPrefersDark());
+        bool dark = mode == AppTheme.Dark || (mode == AppTheme.System && SystemPrefersDark());
         var app = Application.Current;
         if (app is null)
             return;
@@ -58,20 +58,20 @@ public static class ThemeManager
     }
 
     /// <summary>System → light → dark → system.</summary>
-    public static ThemeMode Next(ThemeMode mode) => mode switch
+    public static AppTheme Next(AppTheme mode) => mode switch
     {
-        ThemeMode.System => ThemeMode.Light,
-        ThemeMode.Light => ThemeMode.Dark,
-        _ => ThemeMode.System,
+        AppTheme.System => AppTheme.Light,
+        AppTheme.Light => AppTheme.Dark,
+        _ => AppTheme.System,
     };
 
-    public static ThemeMode Parse(string? text) =>
-        Enum.TryParse<ThemeMode>(text, ignoreCase: true, out var mode) ? mode : ThemeMode.System;
+    public static AppTheme Parse(string? text) =>
+        Enum.TryParse<AppTheme>(text, ignoreCase: true, out var mode) ? mode : AppTheme.System;
 
-    public static string Label(ThemeMode mode) => mode switch
+    public static string Label(AppTheme mode) => mode switch
     {
-        ThemeMode.Light => "Hell",
-        ThemeMode.Dark => "Dunkel",
+        AppTheme.Light => "Hell",
+        AppTheme.Dark => "Dunkel",
         _ => "wie Windows",
     };
 
@@ -96,9 +96,9 @@ public static class ThemeManager
 
     private static void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
     {
-        if (Mode != ThemeMode.System || e.Category != UserPreferenceCategory.General)
+        if (Mode != AppTheme.System || e.Category != UserPreferenceCategory.General)
             return;
-        Application.Current?.Dispatcher.BeginInvoke(() => Apply(ThemeMode.System));
+        Application.Current?.Dispatcher.BeginInvoke(() => Apply(AppTheme.System));
     }
 
     // ---- the title bar (DWM, Windows 10 1809 and later)

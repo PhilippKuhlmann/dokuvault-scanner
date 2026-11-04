@@ -6,7 +6,7 @@ public static class ThemeCommands
 {
     /// <summary>Ctrl+Shift+D: straight to the other one, light or dark.</summary>
     public static ICommand Toggle { get; } =
-        new RelayCommand(() => ThemeManager.Apply(ThemeManager.IsDark ? ThemeMode.Light : ThemeMode.Dark));
+        new RelayCommand(() => ThemeManager.Apply(ThemeManager.IsDark ? AppTheme.Light : AppTheme.Dark));
 
     /// <summary>The button in the header: like Windows → light → dark → like Windows.</summary>
     public static ICommand Cycle { get; } =

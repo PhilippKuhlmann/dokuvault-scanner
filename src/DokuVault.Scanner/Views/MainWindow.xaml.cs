@@ -25,8 +25,8 @@ public partial class MainWindow : Window
     {
         ThemeButton.Content = ThemeManager.Mode switch
         {
-            ThemeMode.Light => "",
-            ThemeMode.Dark => "",
+            AppTheme.Light => "",
+            AppTheme.Dark => "",
             _ => "",
         };
         ThemeButton.ToolTip = $"Darstellung: {ThemeManager.Label(ThemeManager.Mode)} – klicken zum Wechseln (Strg+Umschalt+D: hell/dunkel)";

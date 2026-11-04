@@ -91,7 +91,7 @@ Die Ports und die Erkennung stehen in `src/DokuVault.Scanner.Core/Scanning/Devic
 
 ## Bauen
 
-Voraussetzung ist das .NET 8 SDK.
+Voraussetzung ist das .NET 10 SDK.
 
 ```bash
 dotnet test
