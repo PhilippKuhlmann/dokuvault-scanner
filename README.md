@@ -71,6 +71,27 @@ auch die Titelleiste wird dunkel.
 Die Farben stehen in `Themes/Light.xaml` und `Themes/Dark.xaml`, die Vorlagen der Steuerelemente in
 `Themes/Controls.xaml`.
 
+## Updates
+
+Bei jedem Start fragt die App bei GitHub nach dem neuesten Release, noch bevor sie den DokuVault-Server anspricht. Ist
+es neuer, lädt sie die EXE, vergleicht sie mit der SHA-256-Datei des Releases, tauscht sich aus und startet neu. Dabei
+gehen keine Einstellungen verloren, und die Anmeldung bleibt bestehen.
+
+- Das Laden lässt sich mit „Überspringen“ abbrechen. Beim nächsten Start kommt das Update wieder.
+- Ohne Antwort von GitHub innerhalb von vier Sekunden startet die App einfach wie gehabt.
+- Schlägt das Update fehl, zum Beispiel ohne Schreibrechte im Ordner der EXE, steht das kurz im Fenster, und die bisherige
+  Version startet.
+- Läuft die neue Version nicht an, bleibt die alte erhalten.
+
+Die neue Version startet erst als `DokuVaultScanner.update.exe` neben der EXE und ersetzt diese, sobald die alte beendet
+ist. Eine laufende Single-File-EXE darf nicht umbenannt werden, weil die Laufzeit aus ihr noch nachlädt. Probeläufe
+(Version 0.0.0) und Builds aus der IDE aktualisieren sich nicht.
+
+Geprüft wird die Unversehrtheit, nicht die Herkunft: Die EXE ist nicht signiert, und die Prüfsumme liegt im selben
+Release. Wer das GitHub-Konto oder den Workflow übernimmt, könnte also ein Update an alle Rechner ausliefern.
+
+Der Code steht in `src/DokuVault.Scanner.Core/Update/` und `Infrastructure/AppUpdater.cs`.
+
 ## Was der Scan liest
 
 | Quelle | Wofür |
@@ -129,6 +150,9 @@ Der Workflow läuft auf einem Windows-Runner und erledigt den Rest:
 
 Von Hand unter *Actions → Release → Run workflow* gestartet, ist es ein Probelauf: Der Workflow testet und baut nur, die
 EXE liegt dann sieben Tage als Artefakt beim Lauf, und es entsteht kein Release.
+
+Ein Release erreicht alle Rechner beim nächsten Start der App. Die Update-Prüfung braucht ein öffentliches Repository und
+Tags der Form `v1.2.3`.
 
 Jeder Push auf `main` und jeder Pull Request lässt außerdem die Tests laufen (`.github/workflows/ci.yml`).
 

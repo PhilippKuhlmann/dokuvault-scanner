@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _vm = vm;
+        Title = $"DokuVault Scanner {AppUpdater.Current.ToString(3)}";
         ThemeManager.Attach(this);
         ShowTheme();
         ThemeManager.Changed += ShowTheme;

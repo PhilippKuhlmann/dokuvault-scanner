@@ -27,6 +27,13 @@ public partial class App : Application
             _settings.Theme = ThemeManager.Mode.ToString();
             SettingsStore.Save(_settings);
         };
+
+        if (await AppUpdater.TryUpdateAsync(e.Args))
+        {
+            Shutdown();
+            return;
+        }
+
         var session = await ResumeAsync();
         ShowMain(session, null);
     }
